@@ -363,6 +363,18 @@ def handle_command(message):
     text = message.get("text", "").strip().lower()
     log.info(f"Command received: {text}")
 
+     if text == "/start":
+        send_text(
+            "*Dhan Signal Bot — Commands*\n\n"
+            "/status — Active trade, daily loss, bot state\n"
+            "/confirmed — Mark active trade as placed by you\n"
+            "/exited — Manually close active trade in bot\n"
+            "/cancel — Cancel all pending signals\n"
+            "/pause — Pause signal scanning\n"
+            "/resume — Resume signal scanning\n"
+            "/help — Show this list"
+        )
+
     if text == "/status":
         at = get_st("active_trade")
         dl = get_st("daily_loss")
