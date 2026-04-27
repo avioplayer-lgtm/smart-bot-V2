@@ -363,7 +363,114 @@ def handle_command(message):
     text = message.get("text", "").strip().lower()
     log.info(f"Command received: {text}")
 
-     if text == "/start":
+    if text == "/start":
+        send_text(
+            "*Dhan Signal Bot — Commands*\n\n"
+            "/status — Active trade, daily loss, bot state\n"
+            "/confirmed — Mark active trade as placed by you\n"
+            "/exited — Manually close active trade in bot\n"
+            "/cancel — Cancel all pending signals\n"
+            "/pause — Pause signal scanning\n"
+            "/resume — Resume signal scanning\n"
+            "/help — Show this list"
+        )
+
+    elif text == "/status":
+        at = get_st("active_trade")
+        dl = get_st("daily_loss")
+        ps = get_st("pending_signals")
+        pau = get_st("paused")
+        at_str = (
+            f"*Active Trade*\n"
+            f"{at['symbol']} {at['atm_strike']} {at['direction']}\n"
+            f"Entry: Rs.{at.get('entry_premium_actual', at['atm_prem'])} | SL: Rs.{at.get('sl_premium_current', at['sl_prem'])} | T1: Rs.{at.get('t1_premium', at['tgt_prem'])} | T2: Rs.{at.get('t2_premium', at['tgt_prem'])}\n"
+            f"Stage: {at.get('trade_stage', 'NA')}\n"
+            f"T1 hit: {'Yes' if at.get('t1_hit') else 'No'}\n"
+            f"Confirmed: {'Yes' if at.get('trade_confirmed') else 'No - use /confirmed'}"
+            if at else "No active trade"
+        )
+
+        send_text(
+            f"*Bot Status*\n\n"
+            f"{at_str}\n\n"
+            f"Daily loss : Rs.{dl:.0f} / Rs.{MAX_DAILY_LOSS:.0f}\n"
+            f"Pending sigs: {len(ps)}\n"
+            f"Scanning : {'PAUSED' if pau else 'Active'}\n"
+            f"Dhan token : {'SET' if DHAN_ACCESS_TOKEN else 'MISSING'}"
+        )
+
+    elif text == "/confirmed":
+        at = get_st("active_trade")
+        if not at:
+            send_text("No active trade to confirm.")
+            return
+        with _lock:
+            state["active_trade"]["trade_confirmed"] = True
+            state["active_trade"]["trade_stage"] = "OPEN"
+            state["active_trade"]["confirmed_at"] = now_ist().isoformat()
+            state["trade_confirmed"] = True
+            _persist_state()
+        send_text(
+            f"Trade confirmed: {at['symbol']} {at['atm_strike']} {at['direction']}\n"
+            f"Premium monitor is now active.\n"
+            f"SL: Rs.{at.get('sl_premium_current', at['sl_prem'])} | "
+            f"T1: Rs.{at.get('t1_premium', at['tgt_prem'])} | "
+            f"T2: Rs.{at.get('t2_premium', at['tgt_prem'])}"
+        )
+        log.info("Trade manually confirmed via /confirmed")
+
+    elif text == "/exited":
+        at = get_st("active_trade")
+        if not at:
+            send_text("No active trade to exit.")
+            return
+        with _lock:
+            state["active_trade"] = None
+            state["trade_confirmed"] = False
+            _persist_state()
+        send_text(
+            f"Trade manually closed: {at['symbol']} {at['atm_strike']} {at['direction']}\n"
+            f"Bot reset. Ready for next signal."
+        )
+        log.info(f"Trade manually exited via /exited: {at['symbol']} {at['atm_strike']} {at['direction']}")
+
+    elif text == "/cancel":
+        ps = get_st("pending_signals")
+        count = len(ps)
+        with _lock:
+            state["pending_signals"] = {}
+            _persist_state()
+        send_text(f"Cancelled {count} pending signal(s). Watching for next scan.")
+        log.info(f"Pending signals cancelled via /cancel: {count}")
+
+    elif text == "/pause":
+        set_st("paused", True)
+        send_text("Bot scanning PAUSED. Use /resume to restart scanning.\nPremium monitoring still active.")
+        log.info("Bot paused via /pause")
+
+    elif text == "/resume":
+        set_st("paused", False)
+        send_text("Bot scanning RESUMED. Will scan at next 5-min candle.")
+        log.info("Bot resumed via /resume")
+
+    elif text == "/help":
+        send_text(
+            "*Dhan Signal Bot — Commands*\n\n"
+            "/status — Active trade, daily loss, bot state\n"
+            "/confirmed — Mark active trade as placed by you\n"
+            "/exited — Manually close active trade in bot\n"
+            "/cancel — Cancel all pending signals\n"
+            "/pause — Pause signal scanning\n"
+            "/resume — Resume signal scanning\n"
+            "/help — Show this list"
+        )
+
+    else:
+        send_text(f"Unknown command: {text}\nSend /help for list of commands.")
+    text = message.get("text", "").strip().lower()
+    log.info(f"Command received: {text}")
+    
+    if text == "/start":
         send_text(
             "*Dhan Signal Bot — Commands*\n\n"
             "/status — Active trade, daily loss, bot state\n"
